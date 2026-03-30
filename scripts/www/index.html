@@ -1,11 +1,339 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本麻将点数计算器</title>
+    <style>
+        /* 移动端优先的响应式设计 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+            background-color: #e3f2fd;
+            font-size: 1.5em;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .input-group:last-child {
+            border-bottom: none;
+        }
+
+        label {
+            font-size: 1rem;
+            color: #555;
+            min-width: 60px; /* 保证标签宽度一致 */
+        }
+
+        select, input {
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            background-color: #fafafa;
+            width: 120px; /* 统一输入框宽度 */
+            text-align: center;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2196F3;
+            background-color: white;
+        }
+
+        .result-container {
+            text-align: center;
+            padding: 25px 20px;
+        }
+
+        .result-text {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .total-score {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #d32f2f;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        .breakdown-title {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        .payment-breakdown {
+            font-size: 1.1rem;
+            color: #333;
+            line-height: 1.8;
+        }
+
+        .payment-item {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        /* 针对小屏幕优化 */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                padding: 15px;
+                font-size: 1.3em;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                padding: 12px 15px;
+            }
+
+            label {
+                text-align: left;
+                min-width: auto;
+            }
+
+            select, input {
+                width: 100%;
+            }
+
+            .total-score {
+                font-size: 1.8rem;
+            }
+
+            .payment-breakdown {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>日本麻将点数计算器</h1>
+
+    <div class="input-group">
+        <label for="playerType">玩家:</label>
+        <select id="playerType">
+            <option value="child">子家</option>
+            <option value="parent">亲家</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label for="winType">和牌方式:</label>
+        <select id="winType">
+            <option value="ron">荣和</option>
+            <option value="tsumo">自摸</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label for="han">番数:</label>
+        <input type="number" id="han" min="1" max="20" value="4">
+    </div>
+
+    <div class="input-group">
+        <label for="fu">符数:</label>
+        <input type="number" id="fu" min="20" max="150" step="10" value="40">
+    </div>
+
+    <div class="result-container">
+        <div class="result-text">点数:</div>
+        <div id="totalResult" class="total-score">-</div>
+        
+        <!-- 新增点数分配明细 -->
+        <div class="breakdown-title">点数分配:</div>
+        <div id="breakdownResult" class="payment-breakdown">-</div>
+    </div>
+</div>
+
+<script>
+    function calculateScore() {
+        const playerType = document.getElementById('playerType').value;
+        const winType = document.getElementById('winType').value;
+        const han = parseInt(document.getElementById('han').value);
+        const fu = parseInt(document.getElementById('fu').value);
+
+        let totalScore = 0;
+        let paymentBreakdown = "-";
+
+        // 高于满贯的役满处理
+        if (han >= 13) {
+            // 数え役満 (累计役满)
+            const multiple = Math.floor(han / 13);
+            totalScore = 8000 * multiple * (playerType === 'parent' ? 6 : 4); 
+        } else if (han >= 11) {
+            // 役満
+            totalScore = 8000 * (playerType === 'parent' ? 6 : 4);
+        } else if (han >= 8) {
+            // 三倍満
+            totalScore = 6000 * (playerType === 'parent' ? 6 : 4);
+        } else if (han >= 6) {
+            // 倍満
+            totalScore = 4000 * (playerType === 'parent' ? 6 : 4);
+        } else if (han >= 5) {
+            // 満貫
+            totalScore = 2000 * (playerType === 'parent' ? 6 : 4);
+        } else {
+            // 基础点数计算: 符 * 4 * 2^(翻数) (子家自摸时由其他两家支付)
+            let baseScore = Math.ceil(fu * Math.pow(2, han + 2));
+
+            // 20符以下的特殊情况（平和自摸等）
+            if (baseScore < 200) {
+                baseScore = 200;
+            }
+
+            // 超过上限则视为满贯
+            if (baseScore > 2000) {
+                baseScore = 2000;
+            }
+
+            if (winType === 'ron') { // 荣和
+                if (playerType === 'parent') { // 亲家荣和
+                    totalScore = Math.ceil(baseScore * 6 / 100) * 100;
+                } else { // 子家荣和
+                    totalScore = Math.ceil(baseScore * 4 / 100) * 100;
+                }
+            } else { // 自摸
+                if (playerType === 'parent') { // 亲家自摸
+                    // 亲家自摸，子家均付
+                    const perChild = Math.ceil(baseScore * 2 / 100) * 100;
+                    totalScore = perChild * 3;
+                } else { // 子家自摸
+                    // 子家自摸，另一子家付1份，亲家付2份
+                    const fromChild = Math.ceil(baseScore * 1 / 100) * 100;
+                    const fromParent = Math.ceil(baseScore * 2 / 100) * 100;
+                    totalScore = fromChild * 2 + fromParent;
+                }
+            }
+        }
+
+        // --- 应用M.League切上满贯规则 ---
+        // 规则：仅子家荣和时，7700点切上至8000点；仅亲家荣和时，11600点切上至12000点。
+        if (winType === 'ron') { // 只有荣和时才进行修正
+            if (playerType === 'child' && totalScore === 7700) {
+                totalScore = 8000;
+            } else if (playerType === 'parent' && totalScore === 11600) {
+                totalScore = 12000;
+            }
+        }
+        // ------------------------------
+
+        // 计算并显示点数分配明细
+        if (winType === 'ron') {
+            // 荣和时，点数全部由放铳者支付
+            if (playerType === 'parent') {
+                paymentBreakdown = `<div class="payment-item">亲家荣和: <strong>${totalScore} 点</strong></div><div class="payment-item">(由放铳者支付)</div>`;
+            } else {
+                paymentBreakdown = `<div class="payment-item">子家荣和: <strong>${totalScore} 点</strong></div><div class="payment-item">(由放铳者支付)</div>`;
+            }
+        } else {
+            // 自摸时，显示各家支付明细
+            if (playerType === 'parent') { // 亲家自摸
+                const perChild = Math.ceil(totalScore / 3 / 100) * 100;
+                paymentBreakdown = `
+                    <div class="payment-item">亲家自摸: <strong>${totalScore} 点</strong></div>
+                    <div class="payment-item">子家A → ${perChild} 点</div>
+                    <div class="payment-item">子家B → ${perChild} 点</div>
+                    <div class="payment-item">子家C → ${perChild} 点</div>
+                `;
+            } else { // 子家自摸
+                // 计算各家应支付的点数（需要反向推导以确保总数正确）
+                let fromChild = 0;
+                let fromParent = 0;
+                
+                if (playerType === 'child') {
+                    // 根据役满等级确定分配比例
+                    if (han >= 5) { // 满贯以上
+                        if (totalScore === 12000) { // 三倍满
+                            fromChild = 2000;
+                            fromParent = 4000;
+                        } else if (totalScore === 8000) { // 倍满
+                            fromChild = 2000;
+                            fromParent = 4000;
+                        } else if (totalScore === 6000) { // 三倍满
+                            fromChild = 2000;
+                            fromParent = 2000;
+                        } else if (totalScore === 4000) { // 倍满
+                            fromChild = 1000;
+                            fromParent = 2000;
+                        } else if (totalScore === 2000) { // 满贯
+                            fromChild = 500;
+                            fromParent = 1000;
+                        } else { // 基础役
+                            const baseScore = Math.ceil(fu * Math.pow(2, han + 2));
+                            if (baseScore < 200) baseScore = 200;
+                            fromChild = Math.ceil(baseScore * 1 / 100) * 100;
+                            fromParent = Math.ceil(baseScore * 2 / 100) * 100;
+                        }
+                    } else {
+                        // 基础役计算
+                        const baseScore = Math.ceil(fu * Math.pow(2, han + 2));
+                        if (baseScore < 200) baseScore = 200;
+                        fromChild = Math.ceil(baseScore * 1 / 100) * 100;
+                        fromParent = Math.ceil(baseScore * 2 / 100) * 100;
+                    }
+                }
+
+                paymentBreakdown = `
+                    <div class="payment-item">子家自摸: <strong>${totalScore} 点</strong></div>
+                    <div class="payment-item">子家 → ${fromChild} 点 × 2人</div>
+                    <div class="payment-item">亲家 → ${fromParent} 点</div>
+                `;
+            }
+        }
+
+
+        // 显示结果
+        document.getElementById('totalResult').textContent = `${totalScore} 点`;
+        document.getElementById('breakdownResult').innerHTML = paymentBreakdown;
+    }
+
+    // 页面加载完成后初始化一次计算
+    window.onload = calculateScore;
+
+    // 为所有输入项添加事件监听器
+    document.getElementById('playerType').addEventListener('change', calculateScore);
+    document.getElementById('winType').addEventListener('change', calculateScore);
+    document.getElementById('han').addEventListener('input', calculateScore);
+    document.getElementById('fu').addEventListener('input', calculateScore);
+
+</script>
+
+</body>
 </html>
